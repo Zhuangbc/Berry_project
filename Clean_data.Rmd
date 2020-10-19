@@ -92,7 +92,7 @@ sberry %<>% separate(type,c("type_left","type_right"),sep = " - ")
 
 sberry[is.na(sberry)] <- " "
 
-sberry %<>% mutate(type = "",production = "",Avg = "", Measures = "", Materials = "", Chemicals = "")
+sberry %<>% mutate(production = "",Avg = "", Measures = "", Materials = "", Chemicals = "")
 
 
 # Solve each unique 
@@ -117,8 +117,7 @@ sberry3 <- sberry %>%
 ## "STRAWBERRIES, BEARING"
 sberry4 <- sberry %>%
   filter(type_left == "BEARING") %>%
-  mutate(type = type_left,
-         production = type_right,
+  mutate(production = paste(type_left,type_right,sep = " - "),
          Measures = meas,
          Avg = what)
 
@@ -157,6 +156,8 @@ sberry_clean %<>% separate(Chem,c("Chem_1","Chem_2"),sep = ": ")
 
 sberry_clean %<>% separate(right,c("right_1","right_2"),sep = ": ")
 
+sberry_clean$right_2%>%unique()
+
 sberry_clean[is.na(sberry_clean)] <- " "
 
 ## "TOTAL"
@@ -186,11 +187,11 @@ sberry_clean <- sberry_clean %>% select(-Value,Value)
 
 sberry_clean %<>% arrange(desc(Year),State)
 
-# Check
+# #Check
 # kable(head(sberry_clean,n=10)) %>%
 #   kable_styling(font_size=12)
-
-# Export data
+# 
+# #Export data
 # write_csv(sberry_clean,"rberry_clean.csv")
 
 ```
