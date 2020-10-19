@@ -1,0 +1,139 @@
+---
+title: "Berry Project Report"
+author: "Zijie Huang"
+date: "2020/10/20"
+output: 
+  pdf_document: 
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+library(knitr)
+library(tidyverse)
+library(magrittr)
+library(kableExtra)
+library(ggplot2)
+library(gridExtra)
+opts_chunk$set(echo = FALSE, 
+               warning = FALSE,
+               message = FALSE)
+```
+
+# 1. Abstract
+
+This project seeks to explore the **Berry** dataset which were collected from the USDA database selector: <a href="https://quickstats.nass.usda.gov">https://quickstats.nass.usda.gov</a>. Data were first cleaned and reorganized. Then, data were explored and visualized.
+
+# 2. Data Cleaning
+
+## 2.1 Procedure
+The unique value of each column were checked. The berries data had only 8 out of 21 columns containing meaningful data. In this project, only strawberry data were considered. Aftering checking each meaningful column, **Year**, **State**, **Value** columns were found to be well-organized. However, column **Data Item**, **Domain**, and **Domain Category** are messy. I chose to split them by every special symbol such as **"-"** and **","**. Then, I extracted all meaningful value without overlap and classified them into new columns. Finally, new column **Production**, **Avg**, **Measures**, **Materials** and **Chemicals** were built. All missing values were substituted by one unit blank space.
+
+## 2.2 Cleaned Data Brief
+**Production** contains the type of information such as production and yield. **Avg** indicates whether the value is calculated on average. **Measures** contains the unit of **Value**. **Materials** contains the specific information of the matters used. **Chemicals** contains the types of materials such as fungicide and herbicide.
+```{r echo=FALSE}
+# Read Cleaned Data
+berry <- read.csv("rberry_clean.csv",header = TRUE)
+kable(head(berry,n=5)) %>%
+kable_styling(font_size=6)
+```
+
+# 3. Exploratory Data Analysis
+By looking at the **Production**, data can be divided into two parts. One part is about the general data such as the amount of harvested strawberry or planted strawberry. The other part is about the chemicals that were applied to strawberry. Then, we first look at the first part.\
+
+## 3.1 General Data
+In this part, there are 10 different types of value as shown below. By observation, the relationship between them were found.\
+1. "Production" = "Harvested" $\times$ "Yield".\
+2. "Utilized-Production" = "Fresh Market-Utilized-Production" + "Processing-Utilized-Production".\
+Therefore, plots for these data were considered. These plots for each state and year can be found in the shiny application. Below is a simple demonstration. \
+```{r echo=FALSE}
+#Part1 Part2
+part <- berry$production %>% unique()
+part1 <- part[1:10]
+part2 <- part[11:12]
+cat("Types of value: ")
+print(part1)
+
+#Plot demonstration 1
+x <- berry %>% mutate(Value = as.numeric(Value))
+        filtered <-
+            x %>%
+            mutate(Year <- as.integer(Year)) %>%
+            filter(Year >= 2015,
+                   Year <= 2019,
+                   !Value %in% c("(D)","(NA)","(Z)"),
+                   production %in% c("ACRES HARVESTED","PRODUCTION","YIELD"),
+                   Measures %in% c("","MEASURED IN CWT","MEASURED IN CWT / ACRE")
+            )
+data <- filtered %>% filter(State == "CALIFORNIA")
+        p1 <- ggplot(data = data,aes(x = as.factor(Year), y = Value, group = 1)) +
+            geom_line() +
+            geom_point() +
+            labs(title = "CALIFORNIA") +
+            facet_wrap(~ production, nrow = 1, scales = "free") +
+            xlab("Year") +
+            ylab("Value(Acre / CWT / CWT/Acre)")
+#Plot demonstration 2
+        x <- berry %>% mutate(Value = as.double(Value))
+        filtered <-
+            x %>%
+            mutate(Year <- as.integer(Year)) %>%
+            filter(Year >= 2015,
+                   Year <= 2019,
+                   Measures == "MEASURED IN CWT",
+                   !Value %in% c("(D)","(NA)","(Z)"),
+                   production %in% c("UTILIZED - PRODUCTION","PROCESSING - UTILIZED - PRODUCTION","FRESH MARKET - UTILIZED - PRODUCTION","NOT SOLD - PRODUCTION")
+            )
+        data <- filtered %>% filter(State == "CALIFORNIA")
+
+        p2 <- ggplot(data = data,aes(x = as.factor(Year), y = Value, group = production)) +
+            geom_line( aes(color = production)) +
+            geom_point( aes(color = production)) +
+            labs(title = "CALIFORNIA") +
+            xlab("Year") +
+            ylab("Value(CWT)")
+grid.arrange(p1,p2)
+```
+
+## 3.2 Chemical Data
+In this part, there are two types of value as shown below. For both applications strawberry and treated strawberry, there are eight types of chemicals as shown below. Since there are many data for each types of chemicals and putting different types of chemicals in the same plot is good for comparison, boxplot of chemicals in each year were considered. These plots can be found in the shiny application. Below is a simple demonstration. \
+```{r echo=FALSE}
+#Part 2
+cat("Types of value: ")
+print(part2)
+chem <- berry[!berry$Chemicals %in% c("TOTAL"," "),]$Chemicals %>% unique()
+cat("Types of chemicals: ")
+print(chem)
+
+#Plot demonstrate
+x2 <- berry %>% mutate(Value = as.double(Value))
+        filtered <-
+            x2 %>%
+            mutate(Year <- as.integer(Year)) %>%
+            filter(Year >= 2015,
+                   Year <= 2019,
+                   production == "BEARING - TREATED",
+                   !Value %in% c("(D)","(NA)","(Z)"),
+                   Chemicals %in% c("FUNGICIDE","HERBICIDE","INSECTICIDE","OTHER")
+            )
+
+        data <- filtered %>% filter(State == "CALIFORNIA")
+
+        p <- ggplot(data = data,aes(x = as.factor(Year), y = Value, color = Chemicals )) +
+            geom_boxplot() +
+            coord_flip() +
+            labs(title = "CALIFORNIA: Treated") +
+            xlab("Year") +
+            ylab("Value(PCT/Area Bearing)")
+        p
+```
+
+# 4. Summary
+## 4.1 
+With cleaned data, we explored the data from two aspects. One is general data and the other one is chemical data. \
+From the perspective of intergrity, many data were missing especially for some states, i.e. Michigan, Ohio and Pennsylvania. On the contrary, data for California and Florida are very complete. Apparently, there exists emphasis on some states. For chemical part, there are very few data about fertilizer which makes it hard to study it. There are only four states contain these data also with emphasis on California and Florida.\
+From the perspective of data plot, there are distinguishable changes over years for many variables. For the boxplot of chemicals, there exists differences between different types of chemicals. \
+
+## 4.2 Difficult Points
+During this project, I encountered a few difficult points.\
+1. The format of column **Value** in the csv file is automatically set as numerical value. Therefore, when trying to convert column **Value** from character to double, errors occurred. I solved this by changing the format of **Value** from numerical value to general format in the csv file.\
+2. In the shiny application, how to set dynamic plots which all the plots depends on the input value is the second difficut point. I solved this by using **uiOutput**, **taglist** and **map**. Build a function to render plot and use taglist and map to use this function inside the uiOutput.\
