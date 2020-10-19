@@ -1,0 +1,196 @@
+---
+title: "Cleaning Berries"
+author: "Zijie Huang"
+date: "10/19/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+library(knitr)
+library(tidyverse)
+library(magrittr)
+library(kableExtra)
+
+opts_chunk$set(echo = FALSE, 
+               warning = FALSE,
+               message = FALSE)
+```
+
+##  Acquire and read the data
+
+These data were collected from the USDA database selector: <a href="https://quickstats.nass.usda.gov">https://quickstats.nass.usda.gov</a>
+
+The data were <a href="https://quickstats.nass.usda.gov/results/D416E96E-3D5C-324C-9334-1D38DF88FFF1">stored online</a> and then downloaded as a CSV file.
+
+
+```{r}
+
+## read the data
+
+ag_data <- read_csv("berries.csv", col_names = TRUE)
+
+## look at number of unique values in each column
+ag_data %>% summarize_all(n_distinct) -> aa
+
+
+## make a list of the columns with only one unique value
+bb <- which(aa[1,]==1)
+
+## list the 1-unique valu column names 
+cn <- colnames(ag_data)[bb]
+```
+
+Data selected from the NASS database often has columns without any data or with a single repeated Values. The berries data had only 8 out of 21 columns containing meaningful data.
+
+```{r}
+
+
+## remove the 1-unique columns from the dataset
+ag_data %<>% select(-all_of(bb))
+
+aa %<>% select(-all_of(bb)) 
+
+
+## State name and the State ANSI code are (sort of) redundant
+## Just keep the name
+ag_data %<>% select(-4)
+aa %<>% select(-4) 
+
+# ag_data$Commodity %>% unique()
+
+# kable(head(ag_data)) %>%
+#   kable_styling(font_size=12)
+
+```
+
+
+```{r}
+berry <- unique(ag_data$Commodity)
+nberry <- length(berry)
+
+```
+
+This table contains informaton about `r nberry` berries: blueberries, raspberries, and strawberries.
+
+When the data have been cleaned and organized, the three kinds of berries will be separted into tables with the same stucture so that they can be compared.  So, working with Blueberries along demonstrates how the data will be cleaned and organized for all three kinds of berries. Only the "YEAR" time periond will be considered.
+
+## Strawberries
+```{r}
+sberry <- ag_data %>% filter((Commodity=="STRAWBERRIES") & (Period=="YEAR"))
+sberry %<>% select(-c(Period, Commodity))
+```
+
+
+```{r}
+sberry %<>% separate(`Data Item`, c("B","type", "meas", "what"), sep = ", ") 
+
+sberry %<>% separate(B,c("Red","type2"),sep=" - ")
+
+sberry %<>% select(-Red)
+
+sberry %<>% separate(type,c("type_left","type_right"),sep = " - ")
+
+sberry[is.na(sberry)] <- " "
+
+sberry %<>% mutate(type = "",production = "",Avg = "", Measures = "", Materials = "", Chemicals = "")
+
+
+# Solve each unique 
+## "STRAWBERRIES - ACRES HARVESTED"
+sberry1 <- sberry %>% 
+  filter(type2 == "ACRES HARVESTED") %>%
+  mutate(production = "ACRES HARVESTED")
+
+## "STRAWBERRIES - ACRES PLANTED" 
+sberry2 <- sberry %>%
+  filter(type2 == "ACRES PLANTED") %>%
+  mutate(production = "ACRES PLANTED")
+
+## "STRAWBERRIES - PRODUCTION, MEASURED IN $" 
+##& "STRAWBERRIES - PRODUCTION, MEASURED IN CWT"
+##& "STRAWBERRIES - YIELD, MEASURED IN CWT / ACRE"
+sberry3 <- sberry %>%
+  filter(type2 %in% c("PRODUCTION","YIELD")) %>%
+  mutate(production = type2,
+         Measures = type_left)
+
+## "STRAWBERRIES, BEARING"
+sberry4 <- sberry %>%
+  filter(type_left == "BEARING") %>%
+  mutate(type = type_left,
+         production = type_right,
+         Measures = meas,
+         Avg = what)
+
+## "STRAWBERRIES, FRESH MARKET - PRODUCTION"
+sberry5 <- sberry %>%
+  filter(type_left == "FRESH MARKET",
+         type_right == "PRODUCTION") %>%
+  mutate(production = paste(type_left,type_right,sep = " - "),
+         Measures = meas)
+
+## ""STRAWBERRIES, FRESH MARKET, UTILIZED - PRODUCTION"
+sberry6 <- sberry %>%
+  filter(meas == "UTILIZED - PRODUCTION") %>%
+  mutate(production = paste(type_left,meas,sep = " - "),
+         Measures = what)
+
+## STRAWBERRIES, PROCESSING - PRODUCTION"
+sberry7 <- sberry %>%
+  filter(type_right == "PRODUCTION",
+         type_left %in% c("NOT SOLD","PROCESSING","UTILIZED")) %>%
+  mutate(production = paste(type_left,type_right,sep = " - "),
+         Measures = meas)
+
+# Combine together
+sberry_clean <- bind_rows(list(sberry1,sberry2,sberry3,sberry4,sberry5,sberry6,sberry7))
+
+# drop columns
+sberry_clean %<>% select(-c(type2,type_left,type_right,meas,what))
+
+# Clean Domain and Domain Category
+sberry_clean %<>% separate(Domain,c("Domain_left","Domain_right"),sep = ", ")
+
+sberry_clean %<>% separate(`Domain Category`,c("Chem","right"),sep = ", ")
+
+sberry_clean %<>% separate(Chem,c("Chem_1","Chem_2"),sep = ": ")
+
+sberry_clean %<>% separate(right,c("right_1","right_2"),sep = ": ")
+
+sberry_clean[is.na(sberry_clean)] <- " "
+
+## "TOTAL"
+sberry_clean1 <- sberry_clean %>%
+  filter(Domain_left == "TOTAL") %>%
+  mutate(Chemicals = Domain_left,
+         Materials = Chem_1)
+
+## "Chem"
+sberry_clean2 <- sberry_clean %>%
+  filter(Domain_left == "CHEMICAL") %>%
+  mutate(Chemicals = right_1,
+         Materials = right_2)
+
+## "Fertilizer"
+sberry_clean3 <- sberry_clean %>%
+  filter(Domain_left == "FERTILIZER") %>%
+  mutate(Chemicals = paste(Chem_2,Domain_left,sep = " "))
+
+# Combine together
+sberry_clean <- bind_rows(list(sberry_clean1,sberry_clean2,sberry_clean3))
+
+# arrange columns
+sberry_clean %<>% select(-c(Domain_left,Domain_right,Chem_1,Chem_2,right_1,right_2))
+
+sberry_clean <- sberry_clean %>% select(-Value,Value)
+
+sberry_clean %<>% arrange(desc(Year),State)
+
+# Check
+# kable(head(sberry_clean,n=10)) %>%
+#   kable_styling(font_size=12)
+
+# Export data
+# write_csv(sberry_clean,"rberry_clean.csv")
+
+```

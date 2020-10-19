@@ -1,0 +1,97 @@
+---
+title: "Berry_EDA"
+author: "Zijie Huang"
+date: "2020/10/18"
+output: pdf_document
+---
+
+```{r setup, include=FALSE, warning=FALSE, message=FALSE}
+library(knitr)
+library(tidyverse)
+library(magrittr)
+library(kableExtra)
+library(ggplot2)
+
+opts_chunk$set(echo = FALSE, 
+               warning = FALSE,
+               message = FALSE)
+
+?checkboxGroupInput
+```
+
+## Get Cleaned Data
+```{r}
+# Read Cleaned Data
+berry <- read.csv("berry_clean.csv",header = TRUE)
+
+
+
+berry
+kable(head(berry)) %>%
+  kable_styling(font_size=12)
+
+x <- as.data.frame(x)
+
+x <- berry %>% filter(!Value %in% c("(D)","(NA)","(Z)")) 
+
+str_replace_all(x$Value," ","")
+as.numeric(x$Value[1])*2
+
+
+
+a <- berry %>% filter(production=="APPLICATIONS") 
+b <- berry %>% filter(production=="TREATED")
+c <- berry %>% filter(production=="TREATED",Avg==" AVG")
+dim(b)
+dim(c)
+
+a$Chemical %>% unique()
+a$Measures %>% unique()
+b$Chemical %>% unique()
+
+berry$State %>% unique()
+berry$type %>% unique()
+berry$production %>% unique()
+berry$Avg %>% unique()
+berry$Measures %>% unique()
+berry$Materials %>% unique()
+berry$Chemical %>% unique()
+#(D) (NA) (Z)
+```
+
+```{r}
+dim(berry %>% filter(production == "YIELD"))
+dim(berry %>% filter(production == "UTILIZED - YIELD"))
+
+dim(berry %>% filter(production == "YIELD"))
+dim(berry %>% filter(production == "ACRES HARVESTED"))
+
+dim(berry %>% filter(type == "BEARING",production == "APPLICATIONS"))
+dim(berry %>% filter(type == "BEARING"))
+
+berry %>%filter(
+                   production == c("ACRES HARVESTED","PRODUCTION")
+            )
+
+y <- berry  %>% pivot_wider(names_from = production,values_from = Value)
+
+y$`ACRES HARVESTED`
+
+?tempfile
+?checkboxGroupInput
+?hr
+?icon
+```
+
+```{r}
+data <- berry %>% filter(State == "CALIFORNIA",production %in% c("PRODUCTION","ACRES HARVESTED"))
+head(data)
+ggplot(data = data,aes(x = Year, y = Value, group = production)) +
+  geom_line( aes(color = production)) +
+  geom_point( aes(color = production)) +
+      labs(title = as.character(state),labels = c("Harvest","Production"))
+a <- "LOL"
+
+paste(a)
+
+```
