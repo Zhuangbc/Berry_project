@@ -1,0 +1,12 @@
+name: Berry
+title: Berry
+username:
+account: zhuangbc
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 3050548
+bundleId: 3759372
+url: https://zhuangbc.shinyapps.io/Berry/
+when: 1603131679.42641
+asMultiple: FALSE
+asStatic: FALSE
